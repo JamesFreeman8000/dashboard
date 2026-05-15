@@ -193,6 +193,18 @@
   .svc-chip:hover { border-color:var(--accent);color:var(--text); }
   .svc-chip.checked { background:var(--accent)30;border-color:var(--accent);color:var(--accent);font-weight:500; }
 
+  .weather-day { background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;min-width:80px;flex:1; }
+  .weather-icon { font-size:1.6rem;margin-bottom:4px; }
+  .weather-temp { font-family:var(--font-display);font-size:1.2rem;color:#e8edf8; }
+  .weather-label { font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px; }
+  .weather-desc { font-size:0.62rem;color:var(--muted);margin-top:2px; }
+  .rain-bar { height:3px;border-radius:2px;margin-top:6px; }
+  #town-dropdown::-webkit-scrollbar { width:4px; }
+  #town-dropdown::-webkit-scrollbar-thumb { background:var(--border);border-radius:2px; }
+  .town-option { padding:9px 14px;font-size:0.73rem;color:var(--text);cursor:pointer;font-family:var(--font-mono);border-bottom:1px solid var(--border); }
+  .town-option:last-child { border-bottom:none; }
+  .town-option:hover { background:var(--accent)15;color:var(--accent); }
+
   /* CUSTOMER PROFILE PAGE */
   #customer-profile { display: none; }
   #customer-profile.active { display: block; }
@@ -395,6 +407,23 @@
 
   <!-- ═══════════════ SCHEDULE ═══════════════ -->
   <div class="tab-content" id="tab-schedule">
+
+    <!-- WEATHER WIDGET -->
+    <div id="weather-widget" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
+        <div style="font-family:var(--font-display);font-size:1rem;color:#e8edf8;letter-spacing:2px">⛅ WEATHER</div>
+        <div style="position:relative;display:flex;gap:8px;align-items:center">
+          <input type="text" id="weather-search" placeholder="Search NJ town..." oninput="filterNJTowns()" onfocus="showTownDropdown()" onblur="setTimeout(hideTownDropdown,200)"
+            style="width:220px;padding:8px 12px;font-size:0.73rem;border-radius:7px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);outline:none"/>
+          <div id="town-dropdown" style="display:none;position:absolute;top:38px;left:0;width:220px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px #00000040"></div>
+          <button class="btn btn-accent btn-sm" onclick="fetchWeather()">Search</button>
+        </div>
+      </div>
+      <div id="weather-content" style="margin-top:16px">
+        <div style="font-size:0.7rem;color:var(--muted);letter-spacing:1px">Search a town above to see the forecast</div>
+      </div>
+    </div>
+
     <div class="cal-nav">
       <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">← Prev</button>
       <div class="cal-month-label" id="cal-month-label"></div>
@@ -719,7 +748,15 @@ function setSyncStatus(text, color) {
 }
 
 // ═══════════════ AUTH ═══════════════
+const IS_PREVIEW = !window.location.hostname.includes('github.io');
+
 window.onload = function() {
+  // If running in Claude preview or locally, skip auth and use sample data
+  if (IS_PREVIEW) {
+    hideLoginScreen();
+    loadPreviewData();
+    return;
+  }
   const cached = sessionStorage.getItem('gtoken');
   if (cached) { accessToken = cached; hideLoginScreen(); loadAllData(); return; }
   const wait = setInterval(() => {
@@ -727,6 +764,28 @@ window.onload = function() {
   }, 100);
   setTimeout(() => { clearInterval(wait); showLoginBtn('Could not load Google Sign-In. Check your internet connection and refresh.'); }, 8000);
 };
+
+function loadPreviewData() {
+  incomeData = [
+    {id:1,date:'2025-05-01',customerId:1,customer:'Mike Johnson',services:['Driveway','Sidewalk'],service:'Driveway, Sidewalk',amount:250,tips:20,mileage:12,status:'Completed',notes:'Repeat customer',link:''},
+    {id:2,date:'2025-05-07',customerId:2,customer:'Sarah Lee',services:['House Wash'],service:'House Wash',amount:400,tips:40,mileage:18,status:'Completed',notes:'Two story',link:''},
+    {id:3,date:'2025-05-12',customerId:null,customer:'Tom Rivera',services:['Deck/Patio'],service:'Deck/Patio',amount:175,tips:0,mileage:8,status:'Pending',notes:'',link:''},
+  ];
+  expenseData = [
+    {id:1,date:'2025-05-03',category:'Supplies / Chemicals',description:'Detergent & nozzles',amount:85,vendor:'Walmart',notes:''},
+    {id:2,date:'2025-05-08',category:'Fuel',description:'Gas fill-up',amount:62,vendor:'Shell',notes:''},
+  ];
+  scheduleData = [
+    {id:1,date:'2025-05-15',time:'09:00',title:'Driveway job – Davis',customer:'Chris Davis',type:'Job',services:['Driveway'],phone:'(555) 123-4567',email:'',address:'14 Oak St',notes:''},
+    {id:2,date:'2025-05-18',time:'13:00',title:'Estimate – Williams',customer:'Pat Williams',type:'Estimate',services:[],phone:'',email:'',address:'',notes:''},
+  ];
+  customerData = [
+    {id:1,name:'Mike Johnson',phone:'(555) 111-2222',email:'mike@email.com',address:'22 Birch Rd, Newfield, NJ',tag:'Regular',notes:'Prefers morning calls'},
+    {id:2,name:'Sarah Lee',phone:'(555) 333-4444',email:'sarah@email.com',address:'7 Maple Ave, Vineland, NJ',tag:'VIP',notes:''},
+  ];
+  setSyncStatus('Preview mode','var(--purple)');
+  renderHomeStats();
+}
 
 function initGoogleAuth() {
   try {
@@ -752,6 +811,7 @@ function signIn() {
 }
 
 function signOut() {
+  if (IS_PREVIEW) { location.reload(); return; }
   if (accessToken) { try { google.accounts.oauth2.revoke(accessToken); } catch(e){} }
   accessToken = null;
   sessionStorage.removeItem('gtoken');
@@ -885,6 +945,11 @@ async function loadAllData() {
 }
 
 async function syncSheet(type) {
+  // In preview mode just update the in-memory data, no API calls
+  if (IS_PREVIEW) {
+    setSyncStatus('Preview mode','var(--purple)');
+    return;
+  }
   const map = {
     income:   { headers:INCOME_HEADERS,   data:incomeData,   sheet:SHEETS.income },
     expenses: { headers:EXPENSE_HEADERS,  data:expenseData,  sheet:SHEETS.expenses },
@@ -1680,6 +1745,158 @@ function sortTable(type,col){
 }
 
 // ═══════════════ INIT ═══════════════
+// ═══════════════ WEATHER ═══════════════
+const NJ_TOWNS = [
+  'Absecon','Atlantic City','Audubon','Avalon','Barnegat','Barrington','Bayville','Bellmawr',
+  'Bergenfield','Berlin','Blackwood','Bordentown','Bound Brook','Bridgeton','Browns Mills',
+  'Burlington','Camden','Cape May','Carneys Point','Carteret','Cherry Hill','Cinnaminson',
+  'Clayton','Clementon','Clifton','Collingswood','Deptford','Dover','East Orange',
+  'Eatontown','Egg Harbor City','Egg Harbor Township','Elizabeth','Elmwood Park',
+  'Evesham','Fair Lawn','Flemington','Florence','Franklinville','Freehold','Galloway',
+  'Glassboro','Gloucester City','Gloucester Township','Hackensack','Haddon Heights',
+  'Haddonfield','Hammonton','Hazlet','Hillside','Hoboken','Hopatcong','Hopewell',
+  'Jackson','Jersey City','Kearny','Lacey','Lakewood','Lavallette','Lawrence',
+  'Linden','Little Egg Harbor','Lodi','Long Branch','Lyndhurst','Malaga','Manahawkin',
+  'Mannington','Maple Shade','Maplewood','Marlton','Medford','Millville','Monroe',
+  'Moorestown','Mount Holly','Mount Laurel','Mullica Hill','Neptune','New Brunswick',
+  'Newark','North Bergen','North Wildwood','Northfield','Nutley','Ocean City',
+  'Ocean Township','Paterson','Pemberton','Pennsauken','Penns Grove','Pennsville',
+  'Perth Amboy','Phillipsburg','Pitman','Plainfield','Pleasantville','Point Pleasant',
+  'Princeton','Rahway','Ramsey','Randolph','Red Bank','Ridgewood','Rio Grande',
+  'Riverton','Roselle','Runnemede','Salem','Sayreville','Sea Isle City','Sewell',
+  'Sicklerville','Somerset','Somerville','South Amboy','South Brunswick','South Orange',
+  'South Vineland','Sparta','Swedesboro','Toms River','Trenton','Union','Union City',
+  'Ventnor City','Vineland','Voorhees','Washington Township','West Deptford','West Orange',
+  'West Wildwood','Westampton','Westfield','Westville','Weymouth','Wildwood',
+  'Williamstown','Willingboro','Winslow','Woodbury','Woodbury Heights','Woodstown',
+].sort();
+
+let selectedTown = 'Vineland';
+let selectedLat = 39.4862;
+let selectedLon = -75.0255;
+
+function filterNJTowns() {
+  const q = document.getElementById('weather-search').value.toLowerCase();
+  const matches = q.length < 1 ? NJ_TOWNS.slice(0,20) : NJ_TOWNS.filter(t => t.toLowerCase().includes(q));
+  renderTownDropdown(matches);
+  showTownDropdown();
+}
+
+function renderTownDropdown(towns) {
+  const dd = document.getElementById('town-dropdown');
+  if (!towns.length) { dd.innerHTML = '<div class="town-option" style="color:var(--muted)">No towns found</div>'; return; }
+  dd.innerHTML = towns.map(t =>
+    '<div class="town-option" onmousedown="selectTown(\''+t+'\')">'+t+'</div>'
+  ).join('');
+}
+
+function showTownDropdown() {
+  const dd = document.getElementById('town-dropdown');
+  const q = document.getElementById('weather-search').value;
+  const matches = q.length < 1 ? NJ_TOWNS.slice(0,20) : NJ_TOWNS.filter(t => t.toLowerCase().includes(q.toLowerCase()));
+  renderTownDropdown(matches);
+  dd.style.display = 'block';
+}
+
+function hideTownDropdown() {
+  document.getElementById('town-dropdown').style.display = 'none';
+}
+
+async function selectTown(town) {
+  document.getElementById('weather-search').value = town;
+  hideTownDropdown();
+  // Geocode the NJ town using Open-Meteo geocoding
+  try {
+    const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(town+' New Jersey')+'&count=5&language=en&format=json');
+    const d = await r.json();
+    const result = d.results ? d.results.find(x => x.admin1 && x.admin1.includes('Jersey')) || d.results[0] : null;
+    if (result) {
+      selectedTown = town;
+      selectedLat = result.latitude;
+      selectedLon = result.longitude;
+      fetchWeather();
+    } else {
+      document.getElementById('weather-content').innerHTML = '<div style="font-size:0.7rem;color:var(--red)">Could not find location for '+town+'</div>';
+    }
+  } catch(e) {
+    document.getElementById('weather-content').innerHTML = '<div style="font-size:0.7rem;color:var(--red)">Geocoding failed — check internet connection</div>';
+  }
+}
+
+async function fetchWeather() {
+  const town = document.getElementById('weather-search').value.trim() || selectedTown;
+  if (!town) return;
+  // If user typed manually without selecting from dropdown, try to geocode first
+  if (town !== selectedTown) { await selectTown(town); return; }
+  document.getElementById('weather-content').innerHTML = '<div style="font-size:0.7rem;color:var(--muted)">Loading forecast...</div>';
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude='+selectedLat+'&longitude='+selectedLon+
+      '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max'+
+      '&temperature_unit=fahrenheit&windspeed_unit=mph&timezone=America%2FNew_York&forecast_days=7';
+    const r = await fetch(url);
+    const d = await r.json();
+    renderWeather(d, town);
+  } catch(e) {
+    document.getElementById('weather-content').innerHTML = '<div style="font-size:0.7rem;color:var(--red)">Weather fetch failed — check internet connection</div>';
+  }
+}
+
+function wmoIcon(code) {
+  if (code === 0) return '☀️';
+  if (code <= 2) return '⛅';
+  if (code === 3) return '☁️';
+  if (code <= 49) return '🌫️';
+  if (code <= 59) return '🌦️';
+  if (code <= 69) return '🌧️';
+  if (code <= 79) return '🌨️';
+  if (code <= 84) return '🌧️';
+  if (code <= 99) return '⛈️';
+  return '🌡️';
+}
+
+function wmoDesc(code) {
+  if (code === 0) return 'Clear';
+  if (code <= 2) return 'Partly cloudy';
+  if (code === 3) return 'Overcast';
+  if (code <= 49) return 'Foggy';
+  if (code <= 59) return 'Drizzle';
+  if (code <= 69) return 'Rain';
+  if (code <= 79) return 'Snow';
+  if (code <= 84) return 'Rain showers';
+  if (code <= 99) return 'Thunderstorm';
+  return 'Unknown';
+}
+
+function renderWeather(data, town) {
+  const days = data.daily;
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const today = new Date();
+  const cards = days.time.map((dateStr, i) => {
+    const d = new Date(dateStr+'T12:00:00');
+    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : dayNames[d.getDay()];
+    const icon = wmoIcon(days.weathercode[i]);
+    const desc = wmoDesc(days.weathercode[i]);
+    const hi = Math.round(days.temperature_2m_max[i]);
+    const lo = Math.round(days.temperature_2m_min[i]);
+    const rain = days.precipitation_probability_max[i] || 0;
+    const wind = Math.round(days.windspeed_10m_max[i]);
+    const rainColor = rain > 60 ? 'var(--red)' : rain > 30 ? 'var(--yellow)' : 'var(--accent)';
+    const goodDay = rain < 30 && days.weathercode[i] <= 3;
+    return '<div class="weather-day"'+(i===0?' style="border-color:var(--accent)"':'')+'>'+
+      '<div class="weather-label">'+label+'</div>'+
+      '<div class="weather-icon">'+icon+'</div>'+
+      '<div class="weather-temp">'+hi+'° <span style="color:var(--muted);font-size:0.85rem">'+lo+'°</span></div>'+
+      '<div class="weather-desc">'+desc+'</div>'+
+      '<div style="font-size:0.6rem;color:'+rainColor+';margin-top:4px">💧 '+rain+'%</div>'+
+      '<div style="font-size:0.6rem;color:var(--muted);margin-top:2px">💨 '+wind+' mph</div>'+
+      (goodDay ? '<div style="font-size:0.58rem;color:var(--accent);margin-top:4px;letter-spacing:1px">GOOD DAY</div>' : '')+
+    '</div>';
+  }).join('');
+  document.getElementById('weather-content').innerHTML =
+    '<div style="font-size:0.65rem;color:var(--muted);letter-spacing:1px;margin-bottom:12px">📍 '+town+', NJ</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+cards+'</div>';
+}
+
 // Init is handled by window.onload above
 </script>
 </body>
